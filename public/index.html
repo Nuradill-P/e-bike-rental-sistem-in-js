@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>E-Bike Rental</title>
+<style>
+    :root {
+        --bg: #f5f6f8;
+        --card: #ffffff;
+        --border: #e2e4e8;
+        --text: #1a1d23;
+        --muted: #6b7280;
+        --primary: #2563eb;
+        --primary-hover: #1d4ed8;
+        --success: #16a34a;
+        --danger: #dc2626;
+        --warning: #d97706;
+        --radius: 8px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+        margin: 0;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        line-height: 1.4;
+    }
+
+    header {
+        background: var(--card);
+        border-bottom: 1px solid var(--border);
+        padding: 16px 24px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    header h1 {
+        font-size: 18px;
+        margin: 0;
+    }
+
+    #auth-status {
+        font-size: 14px;
+        color: var(--muted);
+    }
+
+    #auth-status .role-badge {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 600;
+        margin-left: 6px;
+    }
+
+    .role-admin { background: #fef3c7; color: var(--warning); }
+    .role-user { background: #dcfce7; color: var(--success); }
+
+    main {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+    }
+
+    section.card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 20px;
+    }
+
+    section.card h2 {
+        margin: 0 0 16px 0;
+        font-size: 16px;
+    }
+
+    form.inline-form {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    input {
+        padding: 8px 10px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        font-size: 14px;
+        flex: 1;
+        min-width: 160px;
+    }
+
+    button {
+        padding: 8px 14px;
+        border: none;
+        border-radius: var(--radius);
+        background: var(--primary);
+        color: #fff;
+        font-size: 14px;
+        cursor: pointer;
+    }
+
+    button:hover { background: var(--primary-hover); }
+
+    button.secondary {
+        background: transparent;
+        color: var(--primary);
+        border: 1px solid var(--primary);
+    }
+
+    button.danger { background: var(--danger); }
+    button.danger:hover { background: #b91c1c; }
+
+    button.success { background: var(--success); }
+    button.success:hover { background: #15803d; }
+
+    #login-message, #hint-message {
+        font-size: 13px;
+        margin-top: 8px;
+        color: var(--danger);
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+    }
+
+    th, td {
+        text-align: left;
+        padding: 8px 6px;
+        border-bottom: 1px solid var(--border);
+    }
+
+    th {
+        color: var(--muted);
+        font-weight: 600;
+        font-size: 12px;
+        text-transform: uppercase;
+    }
+
+    .status-pill {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .status-available { background: #dcfce7; color: var(--success); }
+    .status-rented { background: #fee2e2; color: var(--danger); }
+    .status-maintenance { background: #fef3c7; color: var(--warning); }
+    .status-pending_payment, .status-pending { background: #fef3c7; color: var(--warning); }
+    .status-active { background: #dbeafe; color: var(--primary); }
+    .status-cancelled, .status-rejected { background: #fee2e2; color: var(--danger); }
+    .status-paid { background: #dcfce7; color: var(--success); }
+
+    .empty-state {
+        color: var(--muted);
+        font-size: 14px;
+        padding: 12px 0;
+    }
+
+    #admin-section {
+        display: none;
+    }
+
+    .actions-cell {
+        display: flex;
+        gap: 6px;
+    }
+</style>
+</head>
+<body>
+
+<header>
+    <h1>E-Bike Rental</h1>
+    <div id="auth-status">Not logged in</div>
+</header>
+
+<main>
+
+    <section class="card" id="login-section">
+        <h2>Login</h2>
+        <form class="inline-form" id="login-form">
+            <input type="email" id="login-email" placeholder="Email" required>
+            <input type="password" id="login-password" placeholder="Password" required>
+            <button type="submit">Log in</button>
+            <button type="button" class="secondary" id="logout-btn" style="display:none;">Log out</button>
+        </form>
+        <div id="login-message"></div>
+    </section>
+
+    <section class="card" id="bikes-section">
+        <h2>Bikes</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Model</th>
+                    <th>Battery</th>
+                    <th>Price / hour</th>
+                    <th>Status</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody id="bikes-table-body"></tbody>
+        </table>
+        <div class="empty-state" id="bikes-empty" style="display:none;">No bikes found.</div>
+    </section>
+
+    <section class="card" id="my-rentals-section">
+        <h2>My Rentals</h2>
+        <div class="empty-state" id="my-rentals-hint">Log in to see your rentals.</div>
+        <table id="my-rentals-table" style="display:none;">
+            <thead>
+                <tr>
+                    <th>Rental #</th>
+                    <th>Bike ID</th>
+                    <th>Start</th>
+                    <th>Total price</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody id="my-rentals-table-body"></tbody>
+        </table>
+    </section>
+
+    <section class="card" id="admin-section">
+        <h2>Admin: Pending Payments</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Payment #</th>
+                    <th>User</th>
+                    <th>Bike</th>
+                    <th>Amount</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody id="pending-payments-table-body"></tbody>
+        </table>
+        <div class="empty-state" id="pending-payments-empty" style="display:none;">No pending payments.</div>
+    </section>
+
+</main>
+
+<script>
+    let token = null;
+    let currentUser = null;
+
+    const authStatusEl = document.getElementById('auth-status');
+    const loginForm = document.getElementById('login-form');
+    const loginMessageEl = document.getElementById('login-message');
+    const logoutBtn = document.getElementById('logout-btn');
+
+    const bikesTableBody = document.getElementById('bikes-table-body');
+    const bikesEmptyEl = document.getElementById('bikes-empty');
+
+    const myRentalsHintEl = document.getElementById('my-rentals-hint');
+    const myRentalsTableEl = document.getElementById('my-rentals-table');
+    const myRentalsTableBody = document.getElementById('my-rentals-table-body');
+
+    const adminSectionEl = document.getElementById('admin-section');
+    const pendingPaymentsTableBody = document.getElementById('pending-payments-table-body');
+    const pendingPaymentsEmptyEl = document.getElementById('pending-payments-empty');
+
+    function parseJwt(jwt) {
+        try {
+            const payload = jwt.split('.')[1];
+            return JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')));
+        } catch (err) {
+            return null;
+        }
+    }
+
+    function authHeaders() {
+        return token ? { 'Authorization': 'Bearer ' + token } : {};
+    }
+
+    async function api(path, options = {}) {
+        const res = await fetch(path, {
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...authHeaders(),
+                ...(options.headers || {}),
+            },
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+            throw new Error(data.error || `Request failed with status ${res.status}`);
+        }
+        return data;
+    }
+
+    function renderAuthStatus() {
+        if (!token || !currentUser) {
+            authStatusEl.textContent = 'Not logged in';
+            logoutBtn.style.display = 'none';
+            adminSectionEl.style.display = 'none';
+            myRentalsHintEl.style.display = 'block';
+            myRentalsTableEl.style.display = 'none';
+            return;
+        }
+
+        const roleClass = currentUser.role === 'admin' ? 'role-admin' : 'role-user';
+        authStatusEl.innerHTML =
+            `Logged in as ${currentUser.email} <span class="role-badge ${roleClass}">${currentUser.role}</span>`;
+        logoutBtn.style.display = 'inline-block';
+        adminSectionEl.style.display = currentUser.role === 'admin' ? 'block' : 'none';
+    }
+
+    function renderStatusPill(status) {
+        return `<span class="status-pill status-${status}">${status}</span>`;
+    }
+
+    async function loadBikes() {
+        try {
+            const data = await api('/api/bikes');
+            const bikes = data.bikes || [];
+            bikesTableBody.innerHTML = '';
+            bikesEmptyEl.style.display = bikes.length === 0 ? 'block' : 'none';
+
+            bikes.forEach((bike) => {
+                const row = document.createElement('tr');
+                const canRent = bike.status === 'available' && token;
+                row.innerHTML = `
+                    <td>${bike.model}</td>
+                    <td>${bike.battery_percent}%</td>
+                    <td>$${Number(bike.price_per_hour).toFixed(2)}</td>
+                    <td>${renderStatusPill(bike.status)}</td>
+                    <td>${canRent ? `<button data-bike-id="${bike.id}" class="rent-btn">Rent</button>` : ''}</td>
+                `;
+                bikesTableBody.appendChild(row);
+            });
+
+            bikesTableBody.querySelectorAll('.rent-btn').forEach((btn) => {
+                btn.addEventListener('click', () => rentBike(btn.dataset.bikeId));
+            });
+        } catch (err) {
+            console.error('Failed to load bikes:', err);
+        }
+    }
+
+    async function rentBike(bikeId) {
+        const hours = prompt('How many hours do you want to rent this bike for?');
+        if (!hours) return;
+
+        const hoursNum = Number(hours);
+        if (!hoursNum || hoursNum <= 0) {
+            alert('Please enter a valid positive number of hours.');
+            return;
+        }
+
+        try {
+            await api('/api/rentals', {
+                method: 'POST',
+                body: JSON.stringify({ bike_id: Number(bikeId), hours: hoursNum }),
+            });
+            alert('Rental requested. Waiting for payment confirmation.');
+            await loadBikes();
+            await loadMyRentals();
+        } catch (err) {
+            alert('Failed to request rental: ' + err.message);
+        }
+    }
+
+    async function loadMyRentals() {
+        if (!token) {
+            myRentalsHintEl.style.display = 'block';
+            myRentalsTableEl.style.display = 'none';
+            return;
+        }
+
+        try {
+            const data = await api('/api/rentals/my');
+            const rentals = data.rentals || [];
+
+            myRentalsHintEl.style.display = rentals.length === 0 ? 'block' : 'none';
+            if (rentals.length === 0) myRentalsHintEl.textContent = 'You have no rentals yet.';
+            myRentalsTableEl.style.display = rentals.length > 0 ? 'table' : 'none';
+
+            myRentalsTableBody.innerHTML = '';
+            rentals.forEach((rental) => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>#${rental.id}</td>
+                    <td>${rental.bike_id}</td>
+                    <td>${new Date(rental.start_time).toLocaleString()}</td>
+                    <td>$${Number(rental.total_price).toFixed(2)}</td>
+                    <td>${renderStatusPill(rental.status)}</td>
+                `;
+                myRentalsTableBody.appendChild(row);
+            });
+        } catch (err) {
+            console.error('Failed to load my rentals:', err);
+        }
+    }
+
+    async function loadPendingPayments() {
+        if (!currentUser || currentUser.role !== 'admin') return;
+
+        try {
+            const data = await api('/api/payments/pending');
+            const payments = data.payments || [];
+
+            pendingPaymentsEmptyEl.style.display = payments.length === 0 ? 'block' : 'none';
+            pendingPaymentsTableBody.innerHTML = '';
+
+            payments.forEach((payment) => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>#${payment.payment_id}</td>
+                    <td>${payment.user_name} (${payment.user_email})</td>
+                    <td>#${payment.bike_id}</td>
+                    <td>$${Number(payment.amount).toFixed(2)}</td>
+                    <td class="actions-cell">
+                        <button class="success confirm-btn" data-id="${payment.payment_id}">Confirm</button>
+                        <button class="danger reject-btn" data-id="${payment.payment_id}">Reject</button>
+                    </td>
+                `;
+                pendingPaymentsTableBody.appendChild(row);
+            });
+
+            pendingPaymentsTableBody.querySelectorAll('.confirm-btn').forEach((btn) => {
+                btn.addEventListener('click', () => resolvePayment(btn.dataset.id, 'confirm'));
+            });
+            pendingPaymentsTableBody.querySelectorAll('.reject-btn').forEach((btn) => {
+                btn.addEventListener('click', () => resolvePayment(btn.dataset.id, 'reject'));
+            });
+        } catch (err) {
+            console.error('Failed to load pending payments:', err);
+        }
+    }
+
+    async function resolvePayment(paymentId, action) {
+        try {
+            await api(`/api/payments/${paymentId}/${action}`, { method: 'PATCH' });
+            await loadPendingPayments();
+            await loadBikes();
+        } catch (err) {
+            alert(`Failed to ${action} payment: ` + err.message);
+        }
+    }
+
+    async function refreshAll() {
+        await loadBikes();
+        await loadMyRentals();
+        await loadPendingPayments();
+    }
+
+    loginForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        loginMessageEl.textContent = '';
+
+        const email = document.getElementById('login-email').value;
+        const password = document.getElementById('login-password').value;
+
+        try {
+            const data = await api('/api/auth/login', {
+                method: 'POST',
+                body: JSON.stringify({ email, password }),
+            });
+            token = data.token;
+            currentUser = parseJwt(token);
+            renderAuthStatus();
+            loginForm.reset();
+            await refreshAll();
+        } catch (err) {
+            loginMessageEl.textContent = err.message;
+        }
+    });
+
+    logoutBtn.addEventListener('click', async () => {
+        token = null;
+        currentUser = null;
+        renderAuthStatus();
+        await refreshAll();
+    });
+
+    renderAuthStatus();
+    refreshAll();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,49 @@
+### 1. Login as admin (сохраняем токен админа)
+POST http://localhost:3000/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@test.com",
+  "password": "admin123"
+}
+
+> {% client.global.set("admin_token", response.body.token); %}
+
+### 2. Login as user (сохраняем токен юзера)
+POST http://localhost:3000/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "user1@test.com",
+  "password": "user123"
+}
+
+> {% client.global.set("user_token", response.body.token); %}
+
+### 3. Смотрим все велосипеды
+GET http://localhost:3000/api/bikes
+
+### 4. Юзер создаёт аренду (bike_id=1 на 3 часа)
+POST http://localhost:3000/api/rentals
+Content-Type: application/json
+Authorization: Bearer {{user_token}}
+
+{
+  "bike_id": 1,
+  "hours": 3
+}
+
+### 5. Админ смотрит заявки на оплату
+GET http://localhost:3000/api/payments/pending
+Authorization: Bearer {{admin_token}}
+
+### 6. Админ подтверждает платёж
+PATCH http://localhost:3000/api/payments/1/confirm
+Authorization: Bearer {{admin_token}}
+
+### 7. Проверяем велосипед — должен стать 'rented'
+GET http://localhost:3000/api/bikes/1
+
+### 8. Юзер смотрит свои аренды — должна быть 'active'
+GET http://localhost:3000/api/rentals/my
+Authorization: Bearer {{user_token}}
