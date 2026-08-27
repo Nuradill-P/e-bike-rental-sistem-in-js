@@ -2,10 +2,10 @@ const pool = require('../db/pool');
 
 async function requestRental(req, res) {
     const userId = req.user.id;
-    const { bike_id, hours } = req.body;
+    const { bike_id, days } = req.body;
 
-    if (!bike_id || !hours || hours <= 0) {
-        return res.status(400).json({ error: 'bike_id and a positive hours value are required' });
+    if (!bike_id || !days || days <= 0) {
+        return res.status(400).json({ error: 'bike_id and a positive days value are required' });
     }
 
     const client = await pool.connect();
@@ -29,7 +29,7 @@ async function requestRental(req, res) {
             return res.status(409).json({ error: 'Bike is not available' });
         }
 
-        const totalPrice = Number(bike.price_per_hour) * Number(hours);
+        const totalPrice = Number(bike.price_per_day) * Number(days);
 
         const rentalResult = await client.query(
             `INSERT INTO rentals (user_id, bike_id, start_time, total_price, status)
@@ -95,4 +95,58 @@ async function getAllRentals(req, res) {
     }
 }
 
-module.exports = { requestRental, getUserRentals, getAllRentals };
+async function completeRental(req, res) {
+    const { id } = req.params;
+    const client = await pool.connect();
+
+    try {
+        await client.query('BEGIN');
+
+        const rentalResult = await client.query(
+            'SELECT * FROM rentals WHERE id = $1 FOR UPDATE',
+            [id]
+        );
+        const rental = rentalResult.rows[0];
+
+        if (!rental) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ error: 'Rental not found' });
+        }
+
+        const isOwner = rental.user_id === req.user.id;
+        const isAdmin = req.user.role === 'admin';
+        if (!isOwner && !isAdmin) {
+            await client.query('ROLLBACK');
+            return res.status(403).json({ error: 'Not allowed to complete this rental' });
+        }
+
+        if (rental.status !== 'active') {
+            await client.query('ROLLBACK');
+            return res.status(409).json({ error: 'Rental is not active' });
+        }
+
+        const updatedRentalResult = await client.query(
+            `UPDATE rentals SET status = 'completed', end_time = NOW() WHERE id = $1 RETURNING *`,
+            [id]
+        );
+        const updatedRental = updatedRentalResult.rows[0];
+
+        const bikeResult = await client.query(
+            `UPDATE bikes SET status = 'available' WHERE id = $1 RETURNING *`,
+            [rental.bike_id]
+        );
+        const bike = bikeResult.rows[0];
+
+        await client.query('COMMIT');
+
+        return res.json({ rental: updatedRental, bike });
+    } catch (err) {
+        await client.query('ROLLBACK');
+        console.error('Complete rental error:', err);
+        return res.status(500).json({ error: 'Failed to complete rental' });
+    } finally {
+        client.release();
+    }
+}
+
+module.exports = { requestRental, getUserRentals, getAllRentals, completeRental };

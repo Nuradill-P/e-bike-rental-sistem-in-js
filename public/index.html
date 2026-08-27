@@ -204,7 +204,7 @@
                 <tr>
                     <th>Model</th>
                     <th>Battery</th>
-                    <th>Price / hour</th>
+                    <th>Price / day</th>
                     <th>Status</th>
                     <th></th>
                 </tr>
@@ -225,6 +225,7 @@
                     <th>Start</th>
                     <th>Total price</th>
                     <th>Status</th>
+                    <th></th>
                 </tr>
             </thead>
             <tbody id="my-rentals-table-body"></tbody>
@@ -333,7 +334,7 @@
                 row.innerHTML = `
                     <td>${bike.model}</td>
                     <td>${bike.battery_percent}%</td>
-                    <td>$${Number(bike.price_per_hour).toFixed(2)}</td>
+                    <td>$${Number(bike.price_per_day).toFixed(2)}</td>
                     <td>${renderStatusPill(bike.status)}</td>
                     <td>${canRent ? `<button data-bike-id="${bike.id}" class="rent-btn">Rent</button>` : ''}</td>
                 `;
@@ -349,19 +350,19 @@
     }
 
     async function rentBike(bikeId) {
-        const hours = prompt('How many hours do you want to rent this bike for?');
-        if (!hours) return;
+        const days = prompt('How many days do you want to rent this bike for?');
+        if (!days) return;
 
-        const hoursNum = Number(hours);
-        if (!hoursNum || hoursNum <= 0) {
-            alert('Please enter a valid positive number of hours.');
+        const daysNum = Number(days);
+        if (!daysNum || daysNum <= 0) {
+            alert('Please enter a valid positive number of days.');
             return;
         }
 
         try {
             await api('/api/rentals', {
                 method: 'POST',
-                body: JSON.stringify({ bike_id: Number(bikeId), hours: hoursNum }),
+                body: JSON.stringify({ bike_id: Number(bikeId), days: daysNum }),
             });
             alert('Rental requested. Waiting for payment confirmation.');
             await loadBikes();
@@ -389,17 +390,33 @@
             myRentalsTableBody.innerHTML = '';
             rentals.forEach((rental) => {
                 const row = document.createElement('tr');
+                const canReturn = rental.status === 'active';
                 row.innerHTML = `
                     <td>#${rental.id}</td>
                     <td>${rental.bike_id}</td>
                     <td>${new Date(rental.start_time).toLocaleString()}</td>
                     <td>$${Number(rental.total_price).toFixed(2)}</td>
                     <td>${renderStatusPill(rental.status)}</td>
+                    <td>${canReturn ? `<button data-rental-id="${rental.id}" class="return-btn">Return</button>` : ''}</td>
                 `;
                 myRentalsTableBody.appendChild(row);
             });
+
+            myRentalsTableBody.querySelectorAll('.return-btn').forEach((btn) => {
+                btn.addEventListener('click', () => completeRental(btn.dataset.rentalId));
+            });
         } catch (err) {
             console.error('Failed to load my rentals:', err);
+        }
+    }
+
+    async function completeRental(rentalId) {
+        try {
+            await api(`/api/rentals/${rentalId}/complete`, { method: 'PATCH' });
+            await loadMyRentals();
+            await loadBikes();
+        } catch (err) {
+            alert('Failed to return bike: ' + err.message);
         }
     }
 
@@ -469,6 +486,7 @@
             });
             token = data.token;
             currentUser = parseJwt(token);
+            localStorage.setItem('token', token);
             renderAuthStatus();
             loginForm.reset();
             await refreshAll();
@@ -480,10 +498,26 @@
     logoutBtn.addEventListener('click', async () => {
         token = null;
         currentUser = null;
+        localStorage.removeItem('token');
         renderAuthStatus();
         await refreshAll();
     });
 
+    function restoreSession() {
+        const savedToken = localStorage.getItem('token');
+        if (!savedToken) return;
+
+        const payload = parseJwt(savedToken);
+        if (!payload || (payload.exp && payload.exp * 1000 < Date.now())) {
+            localStorage.removeItem('token');
+            return;
+        }
+
+        token = savedToken;
+        currentUser = payload;
+    }
+
+    restoreSession();
     renderAuthStatus();
     refreshAll();
 </script>

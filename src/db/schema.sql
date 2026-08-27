@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS bikes (
     id SERIAL PRIMARY KEY,
     model VARCHAR(255) NOT NULL,
     battery_percent INT NOT NULL CHECK (battery_percent BETWEEN 0 AND 100),
-    price_per_hour NUMERIC(10, 2) NOT NULL,
+    price_per_day NUMERIC(10, 2) NOT NULL,
     status VARCHAR(50) NOT NULL DEFAULT 'available'
 );
 

@@ -10,11 +10,11 @@ const USERS = [
 ];
 
 const BIKES = [
-    { model: 'Xiaomi Mi Electric Scooter Bike', battery_percent: 95, price_per_hour: 5.0 },
-    { model: 'Trek Verve+ 2', battery_percent: 80, price_per_hour: 7.5 },
-    { model: 'Rad Power RadCity 5', battery_percent: 60, price_per_hour: 6.0 },
-    { model: 'Specialized Turbo Vado', battery_percent: 100, price_per_hour: 9.0 },
-    { model: 'Cannondale Tesoro Neo', battery_percent: 45, price_per_hour: 8.0 },
+    { model: 'Xiaomi Mi Electric Scooter Bike', battery_percent: 95, price_per_day: 2.0 },
+    { model: 'Trek Verve+ 2', battery_percent: 80, price_per_day: 7.5 },
+    { model: 'Rad Power RadCity 5', battery_percent: 60, price_per_day: 6.0 },
+    { model: 'Specialized Turbo Vado', battery_percent: 100, price_per_day: 9.0 },
+    { model: 'Cannondale Tesoro Neo', battery_percent: 45, price_per_day: 8.0 },
 ];
 
 async function seed() {
@@ -31,9 +31,9 @@ async function seed() {
 
         for (const bike of BIKES) {
             await pool.query(
-                `INSERT INTO bikes (model, battery_percent, price_per_hour, status)
+                `INSERT INTO bikes (model, battery_percent, price_per_day, status)
                  VALUES ($1, $2, $3, 'available')`,
-                [bike.model, bike.battery_percent, bike.price_per_hour]
+                [bike.model, bike.battery_percent, bike.price_per_day]
             );
         }
 
